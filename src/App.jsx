@@ -970,7 +970,7 @@ export default function App() {
       color: "#fff",
       userSelect: "none",
     }}>
-      <style>{`
+      {/* <style>{`
         @font-face {
           font-family: 'OstrichSans';
           src: url('/assets/fonts/OstrichSans-Heavy.otf') format('opentype');
@@ -992,7 +992,7 @@ export default function App() {
         @keyframes popIn { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         * { box-sizing: border-box; }
-      `}</style>
+      `}</style> */}
 
       {effectCard && <EffectCardPopup card={effectCard} onDismiss={dismissEffect} />}
 
