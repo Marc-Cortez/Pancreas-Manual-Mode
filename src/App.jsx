@@ -970,29 +970,6 @@ export default function App() {
       color: "#fff",
       userSelect: "none",
     }}>
-      {/* <style>{`
-        @font-face {
-          font-family: 'OstrichSans';
-          src: url('/assets/fonts/OstrichSans-Heavy.otf') format('opentype');
-          font-weight: 900;
-          font-style: normal;
-        }
-        @font-face {
-          font-family: 'GillSans';
-          src: url('/assets/fonts/GillSans.ttc') format('truetype');
-          font-weight: 400;
-          font-style: normal;
-        }
-        @font-face {
-          font-family: 'GillSans';
-          src: url('/assets/fonts/GillSans.ttc') format('truetype');
-          font-weight: 600;
-          font-style: normal;
-        }
-        @keyframes popIn { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        * { box-sizing: border-box; }
-      `}</style> */}
 
       {effectCard && <EffectCardPopup card={effectCard} onDismiss={dismissEffect} />}
 
