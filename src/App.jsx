@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-
+import './fonts.css'
 // ─── ASSET PATHS ────────────────────────────────────────────
 const ASSETS = {
   food: {
