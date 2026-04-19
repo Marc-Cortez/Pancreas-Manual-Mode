@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import '../fonts.css'
+
 // ─── ASSET PATHS ────────────────────────────────────────────
 const ASSETS = {
   food: {
@@ -555,12 +555,16 @@ const PHASES = { SETUP: "setup", DRAW: "draw", SPIN: "spin", PLACE: "place", END
 // ─── SETUP SCREEN ─────────────────────────────────────────
 function SetupScreen({ onStart }) {
   return (
-    <div style={{
-      width: "100vw", height: "100vh", overflow: "hidden",
-      background: "#1a2744",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'OstrichSans', sans-serif",
-    }}>
+    <div
+      onClick={() => onStart()}
+      style={{
+        width: "100vw", height: "100vh", overflow: "hidden",
+        background: "#1a2744",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "'OstrichSans', sans-serif",
+        cursor: "pointer",
+      }}
+    >
       <style>{`
         @font-face {
           font-family: 'OstrichSans';
@@ -578,6 +582,7 @@ function SetupScreen({ onStart }) {
           font-weight: 600;
         }
         @keyframes popIn { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
       `}</style>
       <div style={{
         textAlign: "center", color: "#fff", maxWidth: 480, padding: 32,
@@ -595,36 +600,19 @@ function SetupScreen({ onStart }) {
           fontWeight: 400,
         }}>created by Marc Cortez</div>
         <p style={{
-          fontSize: 15, opacity: 0.75, lineHeight: 1.6, marginBottom: 40,
+          fontSize: 15, opacity: 0.75, lineHeight: 1.6, marginBottom: 48,
           fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif",
           fontWeight: 600,
         }}>
           Balance your food, activity, and insulin to match your profile goals. Spin the Blood Glucose Wheel each round — land on Low or High and you'll face challenges that change your strategy.
         </p>
-        <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
-          {[1, 2].map(n => (
-            <button key={n} onClick={() => onStart(n)} style={{
-              background: "rgba(255,255,255,0.1)", color: "#fff",
-              border: "2px solid rgba(255,255,255,0.4)", borderRadius: 10,
-              padding: "14px 36px", fontSize: 18,
-              cursor: "pointer", letterSpacing: "0.08em", textTransform: "uppercase",
-              fontFamily: "'OstrichSans', sans-serif",
-              transition: "background 0.15s, color 0.15s, border-color 0.15s",
-            }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "#fff";
-                e.currentTarget.style.color = "#1a2744";
-                e.currentTarget.style.borderColor = "#fff";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-                e.currentTarget.style.color = "#fff";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
-              }}
-            >
-              {n === 1 ? "Solo" : "2 Players"}
-            </button>
-          ))}
+        <div style={{
+          fontSize: "clamp(13px, 1.8vw, 17px)", letterSpacing: "0.18em", textTransform: "uppercase",
+          color: "rgba(255,255,255,0.55)",
+          animation: "pulse 2s ease-in-out infinite",
+          fontFamily: "'OstrichSans', sans-serif",
+        }}>
+          Click anywhere to play
         </div>
       </div>
     </div>
@@ -632,7 +620,7 @@ function SetupScreen({ onStart }) {
 }
 
 // ─── ENDGAME SCREEN ────────────────────────────────────────
-function EndgameScreen({ profiles, boards, playerCount, onReset }) {
+function EndgameScreen({ profiles, boards, onReset }) {
   const calcScore = (pi) => {
     const t = { food: 0, activity: 0, insulin: 0 };
     SECTIONS.forEach(s => (boards[pi]?.[s] || []).forEach(c => { t[c.type] += c.value; }));
@@ -646,9 +634,7 @@ function EndgameScreen({ profiles, boards, playerCount, onReset }) {
     };
   };
   const scores = profiles.map((_, i) => calcScore(i));
-  let winner;
-  if (playerCount === 1) { winner = scores[0].totalDiff <= 6 ? "You Win!" : "Try Again!"; }
-  else { winner = scores[0].totalDiff < scores[1].totalDiff ? "Player 1 Wins!" : scores[0].totalDiff > scores[1].totalDiff ? "Player 2 Wins!" : "It's a Tie!"; }
+  const winner = scores[0].totalDiff <= 6 ? "You Win!" : "Try Again!";
 
   return (
     <div style={{
@@ -668,7 +654,7 @@ function EndgameScreen({ profiles, boards, playerCount, onReset }) {
             <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
               <img src={ASSETS.profiles[profiles[i].img]} alt="" style={{ width: 70, borderRadius: 8, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 18, marginBottom: 10 }}>Player {i + 1} — Profile #{profiles[i].idNum}</div>
+                <div style={{ fontSize: 18, marginBottom: 10 }}>Profile #{profiles[i].idNum}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                   {[
                     { label: "Food", val: s.food, goal: profiles[i].foodGoal, diff: s.foodDiff },
@@ -704,8 +690,7 @@ function EndgameScreen({ profiles, boards, playerCount, onReset }) {
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
   const [gameState, setGameState] = useState(PHASES.SETUP);
-  const [playerCount, setPlayerCount] = useState(1);
-  const [currentPlayer, setCurrentPlayer] = useState(0);
+  const [currentPlayer] = useState(0);
   const [profiles, setProfiles] = useState([]);
   const [currentSection, setCurrentSection] = useState(0);
   const [hand, setHand] = useState([]);
@@ -722,6 +707,7 @@ export default function App() {
   const [placedThisTurn, setPlacedThisTurn] = useState(0);
   const [showRules, setShowRules] = useState(true);
   const [showFullRules, setShowFullRules] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [spinResult, setSpinResult] = useState(null);
   const [viewSection, setViewSection] = useState(0); // which tab the player is currently viewing
   const [sectionEffects, setSectionEffects] = useState([null, null, null]); // effect card per section
@@ -736,21 +722,18 @@ export default function App() {
     setHighDeck(shuffle(HIGH_CARDS.map(c => ({ ...c, uid: uid() }))));
   }, []);
 
-  const startGame = (count) => {
-    setPlayerCount(count);
+  const startGame = () => {
     const shuffled = shuffle(PROFILE_CARDS);
-    const profs = shuffled.slice(0, count);
-    profs.sort((a, b) => a.idNum - b.idNum);
+    const profs = shuffled.slice(0, 1);
     setProfiles(profs);
     setBoards(profs.map(() => ({ Morning: [], Afternoon: [], Night: [] })));
-    setCurrentPlayer(0);
     setCurrentSection(0);
     initDecks();
     setGameState(PHASES.DRAW);
     setSpinResult(null);
     setViewSection(0);
     setSectionEffects([null, null, null]);
-    setMessage(`Player 1 — Draw your cards for ${SECTIONS[0]}!`);
+    setMessage(`Draw your cards for ${SECTIONS[0]}!`);
   };
 
   const drawCards = () => {
@@ -911,35 +894,27 @@ export default function App() {
     if (constraint === "minActivity3") { const ap = sCards.filter(c => c.type === "activity").reduce((s, c) => s + c.value, 0); if (ap < 3) { setMessage("⚠️ Must play at least 3 activity points!"); return; } }
     if (constraint === "minActivity4") { const ap = sCards.filter(c => c.type === "activity").reduce((s, c) => s + c.value, 0); if (ap < 4) { setMessage("⚠️ Must play at least 4 activity points!"); return; } }
     setHand([]); setActiveConstraint(null); setPlacedThisTurn(0); setSpinResult(null);
-    const nextPlayer = currentPlayer + 1;
-    if (nextPlayer < playerCount) {
-      setCurrentPlayer(nextPlayer);
+    const nextSection = currentSection + 1;
+    if (nextSection < 3) {
+      setCurrentSection(nextSection);
+      setViewSection(nextSection);
       setGameState(PHASES.DRAW);
-      setMessage(`Player ${nextPlayer + 1} — Draw your cards for ${SECTIONS[currentSection]}!`);
+      setMessage(`${SECTIONS[nextSection]} begins! Draw your cards!`);
     } else {
-      const nextSection = currentSection + 1;
-      if (nextSection < 3) {
-        setCurrentSection(nextSection);
-        setViewSection(nextSection);
-        setCurrentPlayer(0);
-        setGameState(PHASES.DRAW);
-        setMessage(`${SECTIONS[nextSection]} begins! Player 1 — Draw your cards!`);
-      } else {
-        setGameState(PHASES.ENDGAME);
-      }
+      setGameState(PHASES.ENDGAME);
     }
   };
 
   const resetGame = () => {
     setGameState(PHASES.SETUP); setBoards([]); setProfiles([]); setHand([]);
-    setCurrentSection(0); setCurrentPlayer(0); setActiveConstraint(null);
+    setCurrentSection(0); setActiveConstraint(null);
     setMessage(""); setPlacedThisTurn(0); setSpinResult(null);
     setViewSection(0); setSectionEffects([null, null, null]); setSelectedCards(new Set());
   };
 
   // ── SCREENS ──
   if (gameState === PHASES.SETUP) return <SetupScreen onStart={startGame} />;
-  if (gameState === PHASES.ENDGAME) return <EndgameScreen profiles={profiles} boards={boards} playerCount={playerCount} onReset={resetGame} />;
+  if (gameState === PHASES.ENDGAME) return <EndgameScreen profiles={profiles} boards={boards} onReset={resetGame} />;
 
   const currentProfile = profiles[currentPlayer];
   const sectionName = SECTIONS[currentSection];
@@ -970,6 +945,29 @@ export default function App() {
       color: "#fff",
       userSelect: "none",
     }}>
+      <style>{`
+        @font-face {
+          font-family: 'OstrichSans';
+          src: url('/assets/fonts/OstrichSans-Heavy.otf') format('opentype');
+          font-weight: 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'GillSans';
+          src: url('/assets/fonts/GillSans.ttc') format('truetype');
+          font-weight: 400;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'GillSans';
+          src: url('/assets/fonts/GillSans.ttc') format('truetype');
+          font-weight: 600;
+          font-style: normal;
+        }
+        @keyframes popIn { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        * { box-sizing: border-box; }
+      `}</style>
 
       {effectCard && <EffectCardPopup card={effectCard} onDismiss={dismissEffect} />}
 
@@ -996,22 +994,38 @@ export default function App() {
           }}>
             created by Marc Cortez
           </span>
-          {playerCount > 1 && (
-            <span style={{
-              fontSize: 11, fontWeight: 700, background: "rgba(255,255,255,0.15)",
-              padding: "2px 10px", borderRadius: 6, letterSpacing: 1,
-            }}>
-              Player {currentPlayer + 1}
-            </span>
-          )}
         </div>
         {/* Hamburger menu */}
-        <button onClick={() => setShowRules(r => !r)} style={{
-          background: "none", border: "none", cursor: "pointer", padding: 6,
-          display: "flex", flexDirection: "column", gap: 4, alignItems: "center",
-        }}>
-          {[0,1,2].map(i => <div key={i} style={{ width: 22, height: 2.5, background: "#fff", borderRadius: 2 }} />)}
-        </button>
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setShowMenu(m => !m)} style={{
+            background: "none", border: "none", cursor: "pointer", padding: 6,
+            display: "flex", flexDirection: "column", gap: 4, alignItems: "center",
+          }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 22, height: 2.5, background: "#fff", borderRadius: 2 }} />)}
+          </button>
+          {showMenu && (
+            <div
+              onClick={() => setShowMenu(false)}
+              style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0,
+                background: "#1a2744", border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: 10, padding: "8px 0", minWidth: 180,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                zIndex: 300, animation: "popIn 0.15s ease-out",
+              }}
+            >
+              {/* Placeholder items — replace with your nav links */}
+              <div style={{
+                padding: "10px 18px",
+                fontSize: 13, fontFamily: "'OstrichSans', sans-serif",
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                color: "rgba(255,255,255,0.4)", pointerEvents: "none",
+              }}>
+                Menu
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── MAIN CONTENT ROW ── */}
@@ -1209,7 +1223,7 @@ export default function App() {
                 { heading: "Place", body: "Drag cards from your hand onto the current section board. You may place up to 5 cards per section. When satisfied, click END to lock in your choices and advance to the next section. You can return cards to your hand by clicking the ✕ on a placed card before ending." },
                 { heading: "Status Effects", body: "Low effect cards impose constraints like minimum Food points or restrictions on Activity cards. High effect cards impose constraints like minimum Activity points or maximum Food values. Some effects discard cards from your hand immediately when drawn. You must satisfy the constraint before clicking END." },
                 { heading: "Reviewing Past Sections", body: "Click the section tab headers (Section 1: Morning, etc.) to review cards you placed in earlier sections. Completed sections are read-only. Click the current section tab to return to active play." },
-                { heading: "Winning", body: "After Night ends, total your Food, Activity, and Insulin points across all three sections. If each total is within ±2 of your Profile goals, you win! In two-player mode, the player with the smaller total deviation across all three categories wins." },
+                { heading: "Winning", body: "After Night ends, total your Food, Activity, and Insulin points across all three sections. If each total is within ±2 of your Profile goals, you win!" },
               ].map(({ heading, body }) => (
                 <div key={heading} style={{ marginBottom: 20 }}>
                   <div style={{ fontFamily: "'OstrichSans', sans-serif", fontSize: 18, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6, color: "rgba(255,255,255,0.9)" }}>{heading}</div>
