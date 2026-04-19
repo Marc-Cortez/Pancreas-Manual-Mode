@@ -353,7 +353,7 @@ function SectionBoard({ section, sectionIndex, currentSection, cards, effectCard
     >
       {/* 5 main card slots in a row */}
       <div style={{
-        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8,
+        display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 200px))", gap: 40,
         flex: 1, alignItems: "center",
       }}>
         {Array.from({ length: 5 }).map((_, si) => (
@@ -410,7 +410,7 @@ function HandCard({ card, draggable: isDraggable, disabled, selected, onToggleSe
       onClick={() => { if (!disabled && onToggleSelect) onToggleSelect(card.uid); }}
       title={card.name}
       style={{
-        width: "clamp(44px, 6vw, 72px)",
+        width: "clamp(65px, 8vw, 100px)",
         aspectRatio: "5/7",
         borderRadius: 6,
         overflow: "visible",
@@ -426,10 +426,10 @@ function HandCard({ card, draggable: isDraggable, disabled, selected, onToggleSe
       }}
       onMouseEnter={e => {
         if (!isDraggable && disabled) return;
-        e.currentTarget.style.width = "clamp(56px, 8vw, 90px)";
+        e.currentTarget.style.width = "clamp(75px, 10vw, 105px)";
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.width = "clamp(44px, 6vw, 72px)";
+        e.currentTarget.style.width = "clamp(65px, 8vw, 100px)";
       }}
     >
       <div style={{
@@ -1242,7 +1242,7 @@ export default function App() {
           }}>
             {/* Upper portion: rules text — sits in line with the blue board */}
             <div style={{
-              flex: 1, minHeight: 0,
+              flex: 1, 
               display: "flex", flexDirection: "column", justifyContent: "space-between",
             }}>
               {/* Rules text at top */}
@@ -1282,32 +1282,13 @@ export default function App() {
 
               {/* Score bars pinned to bottom of the blue board area */}
               {currentProfile && (
-                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px", flexShrink: 0 }}>
+                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "35px 12px", flexShrink: 0 }}>
                   <ScoreBars board={boards[currentPlayer] || {}} profile={currentProfile} />
                 </div>
               )}
             </div>
 
-            {/* Lower portion: profile card — sits in line with the bottom row */}
-            <div style={{
-              height: "clamp(130px, 18vh, 200px)", flexShrink: 0,
-              display: "flex", alignItems: "center",
-            }}>
-              {currentProfile && (
-                <div style={{
-                  borderRadius: 8, overflow: "hidden",
-                  border: "2px solid rgba(255,255,255,0.2)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                  width: "100%",
-                }}>
-                  <img
-                    src={ASSETS.profiles[currentProfile.img]}
-                    alt={`Profile ${currentProfile.idNum}`}
-                    style={{ width: "100%", display: "block" }}
-                  />
-                </div>
-              )}
-            </div>
+            
           </div>
         )}
       </div>
