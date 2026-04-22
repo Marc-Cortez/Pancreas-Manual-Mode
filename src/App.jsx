@@ -324,14 +324,13 @@ function BoardSlot({ card, isActive, isPlacing, onDragBack, dragOver }) {
 }
 
 // ─── SINGLE SECTION BOARD VIEW ───────────────────────────
-function SectionBoard({ section, sectionIndex, currentSection, cards, effectCard: sectionEffect, canDrop, onDrop, onRemoveCard, isPlacing }) {
+// NOTE: effectCard prop removed — effect card is now rendered in the rules panel
+function SectionBoard({ section, sectionIndex, currentSection, cards, canDrop, onDrop, onRemoveCard, isPlacing }) {
   const [dragOver, setDragOver] = useState(false);
-  const [handDragOver, setHandDragOver] = useState(false);
   const isActive = sectionIndex === currentSection;
   const dropAllowed = canDrop && isActive && cards.length < 5;
 
   const handleDragOver = (e) => {
-    // Accept both hand cards and board-back cards
     if (dropAllowed) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true); }
   };
   const handleDrop = (e) => {
@@ -339,9 +338,7 @@ function SectionBoard({ section, sectionIndex, currentSection, cards, effectCard
     setDragOver(false);
     if (!isPlacing || !isActive) return;
     const handCardUid = e.dataTransfer.getData("text/plain");
-    const boardCardUid = e.dataTransfer.getData("board-card");
     if (handCardUid && dropAllowed) onDrop(handCardUid, section);
-    // board-card drops on the board itself are ignored (they go to hand via hand drop zone)
   };
 
   return (
@@ -352,9 +349,11 @@ function SectionBoard({ section, sectionIndex, currentSection, cards, effectCard
       style={{ display: "flex", flexDirection: "column", gap: 8, height: "100%" }}
     >
       {/* 5 main card slots in a row */}
+      {/* left board slot padding — increase paddingLeft value to adjust */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 200px))", gap: 40,
         flex: 1, alignItems: "center",
+        paddingLeft: "34px",
       }}>
         {Array.from({ length: 5 }).map((_, si) => (
           <BoardSlot
@@ -365,27 +364,6 @@ function SectionBoard({ section, sectionIndex, currentSection, cards, effectCard
             dragOver={dragOver && dropAllowed && !cards[si]}
           />
         ))}
-      </div>
-
-      {/* Effect card slot — landscape orientation, image only */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <div style={{ height: "clamp(36px, 5vh, 56px)", aspectRatio: "7/5" }}>
-          {sectionEffect ? (
-            <div style={{ width: "100%", height: "100%", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-              <img src={ASSETS.effect[sectionEffect.effectImg]} alt={sectionEffect.label}
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            </div>
-          ) : (
-            <div style={{
-              width: "100%", height: "100%", borderRadius: 6,
-              background: "rgba(255,255,255,0.08)",
-              border: "1.5px dashed rgba(255,255,255,0.2)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: 10, opacity: 0.3 }}>—</span>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -709,8 +687,8 @@ export default function App() {
   const [showFullRules, setShowFullRules] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [spinResult, setSpinResult] = useState(null);
-  const [viewSection, setViewSection] = useState(0); // which tab the player is currently viewing
-  const [sectionEffects, setSectionEffects] = useState([null, null, null]); // effect card per section
+  const [viewSection, setViewSection] = useState(0);
+  const [sectionEffects, setSectionEffects] = useState([null, null, null]);
   const [selectedCards, setSelectedCards] = useState(new Set());
   const spinRef = useRef(null);
 
@@ -853,7 +831,6 @@ export default function App() {
       if (cur.length >= 5) break;
       const card = remaining.find(c => c.uid === cardUid);
       if (!card) continue;
-      // Constraint checks
       if (constraint === "actionMax2" && card.type === "activity" && card.value > 2) { setMessage("⚠️ Cannot play action cards above 2 points!"); continue; }
       if (constraint === "noAction" && card.type === "activity") { setMessage("⚠️ Cannot play any action cards this turn!"); continue; }
       if (constraint === "foodMax2" && card.type === "food" && card.value > 2) { setMessage("⚠️ Cannot play food cards above 2 points!"); continue; }
@@ -922,19 +899,12 @@ export default function App() {
   const isSpinning = gameState === PHASES.SPIN;
   const isDraw = gameState === PHASES.DRAW;
 
-  // Current action text for rules panel
-  const currentAction = isDraw
-    ? "Draw — Click DRAW to draw your cards for this section."
-    : isSpinning
-    ? `Spin — Spin the blood sugar wheel. If it lands on ${<span style={{color:"#D9534F"}}>Low</span>} or High, draw the corresponding card. Fulfill the prompt on the card this turn.`
-    : isPlacing
-    ? `Place — Drag cards from your hand onto the ${sectionName} section. Click END when done.`
-    : "";
-
-  // Hand display — group by type for visual grouping
   const foodHand = hand.filter(c => c.type === "food");
   const activityHand = hand.filter(c => c.type === "activity");
   const insulinHand = hand.filter(c => c.type === "insulin");
+
+  // Effect card for the section currently being viewed in the rules panel
+  const viewedSectionEffect = sectionEffects[viewSection];
 
   return (
     <div style={{
@@ -1014,7 +984,6 @@ export default function App() {
                 zIndex: 300, animation: "popIn 0.15s ease-out",
               }}
             >
-              {/* Placeholder items — replace with your nav links */}
               <div style={{
                 padding: "10px 18px",
                 fontSize: 13, fontFamily: "'OstrichSans', sans-serif",
@@ -1074,9 +1043,11 @@ export default function App() {
             })}
           </div>
 
-          {/* Board area — shows the viewed section */}
+          {/* Board area — main board container height */}
+          {/* main board container height — adjust the height value below to tweak */}
           <div style={{
-            flex: 1, minHeight: 0,
+            height: "clamp(350px, 17vh, 350px)",
+            flexShrink: 0,
             background: "#2a3d6e",
             borderRadius: 12,
             padding: "14px 16px",
@@ -1105,7 +1076,6 @@ export default function App() {
               sectionIndex={viewSection}
               currentSection={currentSection}
               cards={boards[currentPlayer]?.[SECTIONS[viewSection]] || []}
-              effectCard={sectionEffects[viewSection]}
               canDrop={isPlacing && viewSection === currentSection}
               onDrop={handleCardDrop}
               onRemoveCard={handleRemoveFromBoard}
@@ -1116,10 +1086,11 @@ export default function App() {
           {/* ── BOTTOM ROW: hand | buttons | spinner ── */}
           <div style={{
             display: "flex", gap: 10, alignItems: "stretch",
-            height: "clamp(130px, 22vh, 200px)", flexShrink: 0,
+            height: "clamp(180px, 22vh, 200px)", flexShrink: 0,
+            marginTop: "auto", 
           }}>
 
-            {/* Hand — also accepts drag-from-board to return cards */}
+            {/* Hand */}
             <div
               onDragOver={(e) => { if (isPlacing) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } }}
               onDrop={(e) => {
@@ -1240,9 +1211,8 @@ export default function App() {
             width: "clamp(180px, 18vw, 220px)", flexShrink: 0,
             display: "flex", flexDirection: "column", gap: 10,
           }}>
-            {/* Upper portion: rules text — sits in line with the blue board */}
             <div style={{
-              flex: 1, 
+              flex: 1,
               display: "flex", flexDirection: "column", justifyContent: "space-between",
             }}>
               {/* Rules text at top */}
@@ -1280,15 +1250,37 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Score bars pinned to bottom of the blue board area */}
-              {currentProfile && (
-                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "35px 12px", flexShrink: 0 }}>
-                  <ScoreBars board={boards[currentPlayer] || {}} profile={currentProfile} />
+              {/* Effect card slot — moved here from SectionBoard, sits above the score bars */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: "auto" }}>
+                <div style={{ height: "clamp(90px, 20vh, 120px)", aspectRatio: "7/5", alignSelf: "flex-start" }}>
+                  {viewedSectionEffect ? (
+                    <div style={{ width: "100%", height: "100%", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                      <img
+                        src={ASSETS.effect[viewedSectionEffect.effectImg]}
+                        alt={viewedSectionEffect.label}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: "100%", height: "100%", borderRadius: 6,
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1.5px dashed rgba(255,255,255,0.2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <span style={{ fontSize: 10, opacity: 0.3 }}>—</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            
+                {/* Score bars */}
+                {currentProfile && (
+                  <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "35px 12px", flexShrink: 0 }}>
+                    <ScoreBars board={boards[currentPlayer] || {}} profile={currentProfile} />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
