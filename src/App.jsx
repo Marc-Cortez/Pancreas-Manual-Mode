@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 
+
+
 // ─── ASSET PATHS ────────────────────────────────────────────
 const ASSETS = {
   food: {
