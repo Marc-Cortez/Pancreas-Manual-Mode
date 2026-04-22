@@ -736,7 +736,7 @@ export default function App() {
     setSpinResult(color);
     if (color === "green") {
       setActiveConstraint(null);
-      setMessage("In Range! Place your cards on the board.");
+      setMessage("In Range!? Place your cards on the board.");
       setTimeout(() => setGameState(PHASES.PLACE), 900);
     } else if (color === "low") {
       const nl = [...lowDeck];
