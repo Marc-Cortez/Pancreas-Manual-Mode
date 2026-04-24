@@ -214,27 +214,31 @@ function SpinnerWheel({ onResult, disabled, spinRef }) {
   };
 
   const doSpin = () => {
-    if (spinning || disabled) return;
-    setSpinning(true);
-    setResult(null);
+  if (spinning || disabled) return;
+  setSpinning(true);
+  setResult(null);
 
-    // Weighted random: orange=120°, green=60°, red=120°, green=60°
-    const rand = Math.random() * 360;
-    let idx, center;
-    if (rand < 120)       { idx = 0; center = 0; }   // orange
-    else if (rand < 180)  { idx = 1; center = 90; }  // green right
-    else if (rand < 300)  { idx = 2; center = 180; } // red
-    else                  { idx = 3; center = 270; } // green left
+  const rand = Math.random() * 360;
+  let idx, segmentCenter;
+  if (rand < 120)       { idx = 0; segmentCenter = 0; }   // orange
+  else if (rand < 180)  { idx = 1; segmentCenter = 90; }  // green
+  else if (rand < 300)  { idx = 2; segmentCenter = 180; } // red
+  else                  { idx = 3; segmentCenter = 270; } // green
 
-    const target = 360 * 5 + center;
-    setRotation(prev => prev + target);
-    setTimeout(() => {
-      const res = segments[idx].result;
-      setResult(res);
-      setSpinning(false);
-      onResult(res);
-    }, 2800);
-  };
+  // Correct: rotate (360 - segmentCenter) to bring that segment to the top pointer
+  const targetAngle = (360 - segmentCenter) % 360;
+  const currentAngle = rotation % 360;
+  let diff = (targetAngle - currentAngle + 360) % 360;
+  if (diff === 0) diff = 360; // always spin at least one full rotation worth
+  const additionalRotation = 360 * 5 + diff;
+
+  setRotation(prev => prev + additionalRotation);
+  setTimeout(() => {
+    setResult(segments[idx].result);
+    setSpinning(false);
+    onResult(segments[idx].result);
+  }, 2800);
+};
 
   if (spinRef) spinRef.current = doSpin;
 
@@ -623,7 +627,7 @@ function SetupScreen({ onStart }) {
           fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif",
           fontWeight: 600,
         }}>
-          Balance your food, activity, and insulin to match your profile goals. Spin the Blood Glucose Wheel each round — land on Low or High and you'll face challenges that change your strategy.
+          Balance your food, activity, and insulin to match your daily point totals. Throughout the day you'll spin the Blood Glucose Wheel and face potential obstacles.
         </p>
         <div style={{
           fontSize: "clamp(13px, 1.8vw, 17px)", letterSpacing: "0.18em", textTransform: "uppercase",
@@ -662,36 +666,26 @@ function EndgameScreen({ profiles, boards, onReset }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'OstrichSans', sans-serif", color: "#fff",
     }}>
-      <div style={{ textAlign: "center", maxWidth: 560, padding: 32 }}>
-        <div style={{ fontSize: 48, textTransform: "uppercase", letterSpacing: "0.05em" }}>Game Over!</div>
-        <div style={{ fontSize: 32, color: "rgba(255,255,255,0.6)", marginBottom: 32 }}>{winner}</div>
+      <style>{`
+        @font-face {
+          font-family: 'OstrichSans';
+          src: url('/assets/fonts/OstrichSans-Heavy.otf') format('opentype');
+          font-weight: 900;
+          font-style: normal;
+        }
+      `}</style>
+      <div style={{ textAlign: "center", maxWidth: 400, padding: 32 }}>
+        <div style={{ fontSize: 48, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: "'OstrichSans', sans-serif" }}>Game Over!</div>
+        <div style={{ fontSize: 32, color: "rgba(255,255,255,0.6)", marginBottom: 32, fontFamily: "'OstrichSans', sans-serif" }}>{winner}</div>
         {scores.map((s, i) => (
           <div key={i} style={{
-            background: "rgba(255,255,255,0.07)", borderRadius: 14, padding: 20, marginBottom: 16,
+            background: "rgba(255,255,255,0.07)", borderRadius: 14, padding: 24, marginBottom: 16,
             border: "1px solid rgba(255,255,255,0.1)", textAlign: "left",
           }}>
-            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-              <img src={ASSETS.profiles[profiles[i].img]} alt="" style={{ width: 70, borderRadius: 8, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 18, marginBottom: 10 }}>Profile #{profiles[i].idNum}</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                  {[
-                    { label: "Food", val: s.food, goal: profiles[i].foodGoal, diff: s.foodDiff },
-                    { label: "Activity", val: s.activity, goal: profiles[i].activityGoal, diff: s.actDiff },
-                    { label: "Insulin", val: s.insulin, goal: profiles[i].insulinGoal, diff: s.insDiff },
-                  ].map(x => (
-                    <div key={x.label} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 10, textAlign: "center" }}>
-                      <div style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase", letterSpacing: 1 }}>{x.label}</div>
-                      <div style={{ fontSize: 28 }}>{x.val}</div>
-                      <div style={{ fontSize: 10, opacity: 0.4, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600 }}>Goal: {x.goal}</div>
-                      <div style={{ fontSize: 12, color: x.diff <= 2 ? "#5CB85C" : x.diff <= 4 ? "#E8943A" : "#D9534F" }}>
-                        {x.diff === 0 ? "Perfect!" : `±${x.diff}`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div style={{ fontSize: 14, opacity: 0.5, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16, fontFamily: "'OstrichSans', sans-serif" }}>
+              Profile #{profiles[i].idNum} — Final Score
             </div>
+            <ScoreBars board={boards[i] || {}} profile={profiles[i]} />
           </div>
         ))}
         <button onClick={onReset} style={{
@@ -705,6 +699,7 @@ function EndgameScreen({ profiles, boards, onReset }) {
     </div>
   );
 }
+
 
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
@@ -1267,12 +1262,12 @@ export default function App() {
               </div>
 
               {[
-                { heading: "Objective", body: "End the third and final section with your point totals for each card type — Food, Activity, and Insulin — each within two points of the goals shown on your Profile ID card." },
+                { heading: "Objective", body: "End the third and final section with your point totals for each card type — Food, Activity, and Insulin — each within two points of the goals shown in the bottom right corner." },
                 { heading: "Setup", body: "Each player draws a Profile ID card, which sets their Food, Activity, and Insulin goals for the full game. Shuffle the Food, Activity, Insulin, Low Effect, and High Effect decks separately. Place them face-down in the center." },
                 { heading: "Turn Order", body: "Each section (Morning, Afternoon, Night) follows the same sequence: Draw → Spin → Place. Complete all three sections to finish the game." },
-                { heading: "Draw", body: "Click DRAW to draw 3 Food cards, 3 Activity cards, and 4 Insulin cards into your hand." },
-                { heading: "Spin", body: "Click SPIN to spin the Blood Glucose Wheel. If it lands on green (In Range), proceed normally to place cards. If it lands on red (Low) or orange (High), a status effect card is drawn and its constraint applies to your placement this turn." },
-                { heading: "Place", body: "Drag cards from your hand onto the current section board. You may place up to 5 cards per section. When satisfied, click END to lock in your choices and advance to the next section. You can return cards to your hand by clicking the ✕ on a placed card before ending." },
+                { heading: "Draw", body: "Click DRAW to draw 6 Food and Activity cards, and 4 Insulin cards into your hand." },
+                { heading: "Spin", body: "Click SPIN to spin the Blood Glucose Wheel. If it lands on green (In Range), proceed normally to place cards. If it lands on red (Low) or orange (High), a status effect card is drawn and its constraint applies to the current section." },
+                { heading: "Place", body: "You can drag or click and PLACE cards from your hand onto the current section board. You may place up to 5 cards per section. When satisfied, click END to lock in your choices and advance to the next section. You can return cards by dragging them back to your hand." },
                 { heading: "Status Effects", body: "Low effect cards impose constraints like minimum Food points or restrictions on Activity cards. High effect cards impose constraints like minimum Activity points or maximum Food values. Some effects discard cards from your hand immediately when drawn. You must satisfy the constraint before clicking END." },
                 { heading: "Reviewing Past Sections", body: "Click the section tab headers (Section 1: Morning, etc.) to review cards you placed in earlier sections. Completed sections are read-only. Click the current section tab to return to active play." },
                 { heading: "Winning", body: "After Night ends, total your Food, Activity, and Insulin points across all three sections. If each total is within ±2 of your Profile goals, you win!" },
@@ -1318,16 +1313,16 @@ export default function App() {
                   How to Win
                 </div>
                 <div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 14, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
-                  End the third and final section with your point totals for each card type being within two points of the totals displayed on your Profile ID card.
+                  End the third and final section with your point totals for each card type being within two points of the totals of your point goals.
                 </div>
 
                 <div style={{ fontFamily: "'OstrichSans', sans-serif", fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4, color: "#fff" }}>
                   Current Action
                 </div>
                 <div style={{ fontSize: 14, lineHeight: 1.55, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
-                  {isDraw && "Draw — Click DRAW to draw your cards for this section."}
-                  {isSpinning && (<>Spin — Spin the blood sugar wheel. If it lands on <span style={{ color: "#D9534F" }}>Low</span> or <span style={{ color: "#E8943A" }}>High</span>, draw the corresponding card. Fulfill the prompt on the card this turn.</>)}
-                  {isPlacing && `Place — Drag cards from your hand onto the ${sectionName} section. Click END when done.`}
+                  {isDraw && "DRAW: Click DRAW to draw your cards for this section."}
+                  {isSpinning && (<>SPIN: Spin the blood sugar wheel. If it lands on <span style={{ color: "#D9534F" }}>Low</span> or <span style={{ color: "#E8943A" }}>High</span>, draw the corresponding card. Fulfill the prompt on the card this turn.</>)}
+                  {isPlacing && `PLACE: Drag or click and PLACE cards from your hand onto the ${sectionName} section. Click END when done.`}
                 </div>
               </div>
 
