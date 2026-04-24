@@ -56,6 +56,11 @@ const ASSETS = {
   profiles: { back: "/assets/profiles/back.jpg" },
   spinner: "/assets/misc/spinner.png",
   gameboard: "/assets/misc/gameboard.jpg",
+  misc: {
+    foodIcon: "/assets/misc/food_icon.png",
+    activityIcon: "/assets/misc/activity_icon.png",
+    insulinIcon: "/assets/misc/insulin_icon.png",
+  }
 };
 
 for (let i = 1; i <= 20; i++) ASSETS.effect[i] = `/assets/effect/effect_${i}.jpg`;
@@ -180,36 +185,64 @@ function getCardImage(card, faceDown) {
 }
 
 // ─── SPINNER ──────────────────────────────────────────────
-const SPINNER_SEGMENTS = ["green", "red", "orange", "green", "red", "orange"];
-const SPINNER_RESULT_MAP = { green: "green", red: "low", orange: "high" };
-
 function SpinnerWheel({ onResult, disabled, spinRef }) {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
-  const segAngle = 360 / SPINNER_SEGMENTS.length;
+
+  const SIZE = 100;
+  const cx = SIZE / 2, cy = SIZE / 2, r = SIZE / 2;
+
+  // Segments defined clockwise from north (top).
+  // Orange is centered at north (0°), Red is centered at south (180°).
+  const segments = [
+    { startAngle: 300, spanAngle: 120, color: "#E8943A", result: "high",  label: "HIGH"     },
+    { startAngle: 60,  spanAngle: 60,  color: "#5CB85C", result: "green", label: "IN RANGE" },
+    { startAngle: 120, spanAngle: 120, color: "#D9534F", result: "low",   label: "LOW"      },
+    { startAngle: 240, spanAngle: 60,  color: "#5CB85C", result: "green", label: "IN RANGE" },
+  ];
+
+  const makePath = (startAngle, spanAngle) => {
+    const toRad = deg => (deg - 90) * Math.PI / 180;
+    const x1 = cx + r * Math.cos(toRad(startAngle));
+    const y1 = cy + r * Math.sin(toRad(startAngle));
+    const endAngle = startAngle + spanAngle;
+    const x2 = cx + r * Math.cos(toRad(endAngle));
+    const y2 = cy + r * Math.sin(toRad(endAngle));
+    const largeArc = spanAngle > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  };
 
   const doSpin = () => {
     if (spinning || disabled) return;
     setSpinning(true);
     setResult(null);
-    const segIdx = Math.floor(Math.random() * SPINNER_SEGMENTS.length);
-    const target = 360 * 5 + (360 - segIdx * segAngle - segAngle / 2);
+
+    // Weighted random: orange=120°, green=60°, red=120°, green=60°
+    const rand = Math.random() * 360;
+    let idx, center;
+    if (rand < 120)       { idx = 0; center = 0; }   // orange
+    else if (rand < 180)  { idx = 1; center = 90; }  // green right
+    else if (rand < 300)  { idx = 2; center = 180; } // red
+    else                  { idx = 3; center = 270; } // green left
+
+    const target = 360 * 5 + center;
     setRotation(prev => prev + target);
     setTimeout(() => {
-      const color = SPINNER_SEGMENTS[segIdx];
-      setResult(SPINNER_RESULT_MAP[color]);
+      const res = segments[idx].result;
+      setResult(res);
       setSpinning(false);
-      onResult(SPINNER_RESULT_MAP[color]);
+      onResult(res);
     }, 2800);
   };
 
-  // Expose doSpin to parent via ref
   if (spinRef) spinRef.current = doSpin;
+
+  const resultColor = result === "green" ? "#5CB85C" : result === "low" ? "#D9534F" : "#E8943A";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <div style={{ position: "relative", width: 100, height: 100 }}>
+      <div style={{ position: "relative", width: SIZE, height: SIZE }}>
         {/* Pointer triangle at top */}
         <div style={{
           position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
@@ -218,25 +251,31 @@ function SpinnerWheel({ onResult, disabled, spinRef }) {
           borderTop: "16px solid #fff", zIndex: 3,
           filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))",
         }} />
-        {/* Spinner image — rotates */}
-        <img
-          src="/assets/misc/spinner.png"
-          alt="Blood sugar wheel"
+        {/* SVG wheel — rotates */}
+        <svg
+          width={SIZE}
+          height={SIZE}
+          viewBox={`0 0 ${SIZE} ${SIZE}`}
           style={{
-            width: 100, height: 100,
             borderRadius: "50%",
-            objectFit: "contain",
             transition: spinning ? "transform 2.8s cubic-bezier(0.2, 0.8, 0.3, 1)" : "none",
             transform: `rotate(${rotation}deg)`,
             display: "block",
           }}
-        />
+        >
+          {segments.map((seg, i) => (
+            <path
+              key={i}
+              d={makePath(seg.startAngle, seg.spanAngle)}
+              fill={seg.color}
+            />
+          ))}
+        </svg>
       </div>
       {result && !spinning && (
         <div style={{
           fontSize: 10, fontFamily: "'OstrichSans', sans-serif", letterSpacing: 1,
-          color: result === "green" ? "#5CB85C" : result === "low" ? "#D9534F" : "#E8943A",
-          textTransform: "uppercase",
+          color: resultColor, textTransform: "uppercase",
         }}>
           {result === "green" ? "IN RANGE" : result === "low" ? "LOW!" : "HIGH!"}
         </div>
@@ -319,7 +358,7 @@ function BoardSlot({ card, isActive, isPlacing, onDragBack, dragOver }) {
         borderRadius: "50%", background: "#1a2744",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <span style={{ color: "#fff", fontSize: "clamp(12px, 2vw, 22px)", fontWeight: 700 }}>?</span>
+        <span style={{ color: "#fff", fontSize: "clamp(40px, 2vw, 50px)", fontWeight: 700 }}>?</span>
       </div>
     </div>
   );
@@ -453,11 +492,11 @@ function HandBackCard({ type }) {
 function ScoreBars({ board, profile }) {
   const totals = { food: 0, activity: 0, insulin: 0 };
   SECTIONS.forEach(s => (board[s] || []).forEach(c => { totals[c.type] = (totals[c.type] || 0) + c.value; }));
-  const items = [
-    { icon: "🍞", current: totals.food, goal: profile.foodGoal, color: "#C8884A", bg: "#7a4a20" },
-    { icon: "📋", current: totals.activity, goal: profile.activityGoal, color: "#6B7E9A", bg: "#3a4a5a" },
-    { icon: "💧", current: totals.insulin, goal: profile.insulinGoal, color: "#4A7EC8", bg: "#1a3a6a" },
-  ];
+const items = [
+    { icon: ASSETS.misc.foodIcon,     current: totals.food,     goal: profile.foodGoal,     color: "#C8884A", bg: "#7a4a20" },
+    { icon: ASSETS.misc.activityIcon, current: totals.activity, goal: profile.activityGoal, color: "#6B7E9A", bg: "#3a4a5a" },
+    { icon: ASSETS.misc.insulinIcon,  current: totals.insulin,  goal: profile.insulinGoal,  color: "#4A7EC8", bg: "#1a3a6a" },
+];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {items.map((it, idx) => {
@@ -470,7 +509,7 @@ function ScoreBars({ board, profile }) {
               background: it.color, display: "flex", alignItems: "center",
               justifyContent: "center", fontSize: 13, flexShrink: 0,
               boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            }}>{it.icon}</div>
+            }}><img src={it.icon} alt="" style={{ width: 70, height: 70, objectFit: "contain" }} /></div>
             <div style={{ flex: 1, height: 18, background: "rgba(255,255,255,0.08)", borderRadius: 9, overflow: "hidden", position: "relative" }}>
               <div style={{
                 height: "100%", width: `${pct}%`,
@@ -479,7 +518,7 @@ function ScoreBars({ board, profile }) {
               }} />
             </div>
             <div style={{
-              fontSize: 10, fontWeight: 700, color: diff <= 2 ? "#5CB85C" : "#aaa",
+              fontSize: 16, fontWeight: 700, color: diff <= 2 ? "#5CB85C" : "#aaa",
               fontFamily: "'OstrichSans', sans-serif", minWidth: 32, textAlign: "right",
             }}>{it.current}/{it.goal}</div>
           </div>
@@ -986,14 +1025,54 @@ export default function App() {
                 zIndex: 300, animation: "popIn 0.15s ease-out",
               }}
             >
-              <div style={{
-                padding: "10px 18px",
-                fontSize: 13, fontFamily: "'OstrichSans', sans-serif",
+             <div style={{
+              padding: "10px 18px",
+              fontSize: 13, fontFamily: "'OstrichSans', sans-serif",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.4)", pointerEvents: "none",
+            }}>
+              Menu
+            </div>
+
+             {/* Exhibition */}
+            <div style={{
+              padding: "10px 18px", fontSize: 13,
+              fontFamily: "'OstrichSans', sans-serif",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              color: "rgb(255, 255, 255)", cursor: "default",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+            }}>
+              Exhibition
+            </div>
+            
+            {/* Shop */}
+            <div style={{
+              padding: "10px 18px", fontSize: 13,
+              fontFamily: "'OstrichSans', sans-serif",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              color: "rgb(255, 255, 255)", cursor: "default",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+            }}>
+              Shop
+            </div>
+
+           
+
+            {/* Portfolio */}
+            <a
+              href="https://marc-cortez-portfolio.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{
+                display: "block", padding: "10px 18px", fontSize: 13,
+                fontFamily: "'OstrichSans', sans-serif",
                 letterSpacing: "0.08em", textTransform: "uppercase",
-                color: "rgba(255,255,255,0.4)", pointerEvents: "none",
+                color: "#fff", textDecoration: "none",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
               }}>
-                Menu
-              </div>
+            
+              Portfolio</a>
             </div>
           )}
         </div>
@@ -1235,17 +1314,17 @@ export default function App() {
                   >+</button>
                 </div>
 
-                <div style={{ fontFamily: "'OstrichSans', sans-serif", fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4, color: "#fff" }}>
+                <div style={{ fontFamily: "'OstrichSans', sans-serif", fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4, color: "#fff" }}>
                   How to Win
                 </div>
-                <div style={{ fontSize: 11, lineHeight: 1.55, marginBottom: 14, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
+                <div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 14, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
                   End the third and final section with your point totals for each card type being within two points of the totals displayed on your Profile ID card.
                 </div>
 
-                <div style={{ fontFamily: "'OstrichSans', sans-serif", fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4, color: "#fff" }}>
+                <div style={{ fontFamily: "'OstrichSans', sans-serif", fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4, color: "#fff" }}>
                   Current Action
                 </div>
-                <div style={{ fontSize: 11, lineHeight: 1.55, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
+                <div style={{ fontSize: 14, lineHeight: 1.55, fontFamily: "'GillSans', 'Gill Sans', 'Gill Sans MT', Calibri, sans-serif", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
                   {isDraw && "Draw — Click DRAW to draw your cards for this section."}
                   {isSpinning && (<>Spin — Spin the blood sugar wheel. If it lands on <span style={{ color: "#D9534F" }}>Low</span> or <span style={{ color: "#E8943A" }}>High</span>, draw the corresponding card. Fulfill the prompt on the card this turn.</>)}
                   {isPlacing && `Place — Drag cards from your hand onto the ${sectionName} section. Click END when done.`}
